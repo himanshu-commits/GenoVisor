@@ -1,6 +1,6 @@
 
 ```markdown
-GenoVisor
+"GenoVisor: A Feature-Rich DNA to Protein Converter Enhanced with ExPASy ProtParam Integration for Comprehensive Sequence Exploration"
 
 ## Description
 
