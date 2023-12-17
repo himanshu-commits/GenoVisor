@@ -82,4 +82,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ```
 
-This example assumes that your main Python script is named `main.py`. Adjust the library names and installation instructions based on the actual libraries used in your project.
