@@ -2,8 +2,6 @@
 ```markdown
 GenoVisor
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
 ## Description
 
 Genovisor, a user-friendly DNA to Protein Converter,
