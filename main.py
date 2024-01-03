@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 from Bio import Entrez, SeqIO
+from Bio.Seq import Seq
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -18,8 +19,8 @@ def fetch_sequence(accession_number):
         definition = record.description
         handle.close()
         return dna_sequence, protein_sequence, definition
-    except Exception:
-        return None, None, None
+    except Exception as e:
+        return None, None, str(e)
 
 def fetch_expasy_info(protein_sequence):
     try:
@@ -104,7 +105,6 @@ def fetch_expasy_info(protein_sequence):
         print(f"Unexpected error: {e}")
         return None
 
-
 def save_and_copy_sequence(sequence_type, sequence_text_widget, filename):
     sequence_to_save = sequence_text_widget.get("1.0", "end-1c")
 
@@ -137,10 +137,17 @@ def save_and_copy_sequence(sequence_type, sequence_text_widget, filename):
     messagebox.showinfo("Copy to Clipboard",
                         f"{sequence_type} sequence copied to clipboard")
 
-
 def on_fetch_sequence():
+    # Show loading sign
+    loading_label.config(text="Fetching sequence...", foreground="blue")
+    root.update()
+
     accession_number = accession_entry.get()
     dna_sequence, protein_sequence, definition = fetch_sequence(accession_number)
+
+    # Hide loading sign
+    loading_label.config(text="", foreground="black")
+
     if dna_sequence and protein_sequence:
         dna_text.delete(1.0, tk.END)
         dna_text.insert(tk.END, dna_sequence)
@@ -150,9 +157,46 @@ def on_fetch_sequence():
 
         result_label.config(text=f"Definition: {definition}")
     else:
-        result_label.config(
-            text="Error fetching sequence. Check accession number.")
+        result_label.config(text=f"Error fetching sequence. Check accession number: {definition}")
 
+
+def translate_to_protein():
+    # Get the DNA sequence from the DNA text area and remove non-DNA characters
+    dna_sequence = re.sub('[^ACGTacgt]', '', dna_text.get("1.0", tk.END))
+
+    # Check if the DNA sequence is not empty
+    if dna_sequence:
+        try:
+            # Translate DNA to protein
+            protein_sequence = str(Seq(dna_sequence).translate())
+            
+            # Update the Protein Sequence column
+            protein_text.delete(1.0, tk.END)
+            protein_text.insert(tk.END, protein_sequence)
+        except Exception as e:
+            messagebox.showinfo("Translation Error", f"Error during translation: {e}")
+    else:
+        messagebox.showinfo("No DNA Sequence", "Enter a DNA sequence first.")
+
+def reset_accession_number():
+    accession_entry.delete(0, tk.END)
+
+def reset_sequence():
+    # Clear the DNA sequence field
+    dna_text.delete(1.0, tk.END)
+
+    # Clear the Protein sequence field
+    protein_text.delete(1.0, tk.END)
+    
+def reset_protein_and_parameters():
+    # Clear Protein sequence and parameters
+   # protein_text.delete(1.0, tk.END)
+    #protein_entry.config(state=tk.NORMAL)
+    protein_entry.delete(0 ,tk.END)
+    result_text.config(state=tk.NORMAL)
+    result_text.delete(1.0, tk.END)
+    result_text.config(state=tk.DISABLED)
+    
 def generate_parameters():
     protein_sequence = protein_entry.get()
     parameters = fetch_expasy_info(protein_sequence)
@@ -171,31 +215,34 @@ def generate_parameters():
 
 # Create the main window
 root = tk.Tk()
-root.title("DNA to Protein Converter")
+root.title("GenoVisor")
 
+style = ttk.Style()
+style.configure("Colorful.TButton", foreground="white", background="#4CAF50", font=("Helvetica", 10, "bold"))
 # Create and place widgets
 fetch_button = ttk.Button(root,
                           text="Fetch Sequence",
                           command=on_fetch_sequence)
 fetch_button.grid(row=0, column=0, padx=10, pady=10)
-
-reset_button = ttk.Button(root,
-                          text="Reset",
-                          command=lambda: result_label.config(text=""))
-reset_button.grid(row=0, column=1, padx=10, pady=10)
+loading_label = ttk.Label(root, text="", foreground="black")
+loading_label.grid(row=1, column=1, padx=10, pady=10)
+reset_accession_button = ttk.Button(root,
+                                    text="Reset Accession",
+                                    command=reset_accession_number)
+reset_accession_button.grid(row=0, column=1, padx=10, pady=10)
 
 accession_label = ttk.Label(root, text="Accession Number:")
-accession_label.grid(row=0, column=2, padx=10, pady=10, sticky="w")
+accession_label.grid(row=0, column=3, padx=10, pady=10, sticky="w")
 
 accession_entry = ttk.Entry(root, width=20)
-accession_entry.grid(row=0, column=3, padx=10, pady=10)
+accession_entry.grid(row=0, column=4, padx=10, pady=10)
 
 result_label = ttk.Label(root, text="")
-result_label.grid(row=1, column=0, columnspan=4, pady=10)
+result_label.grid(row=1, column=0, columnspan=5, pady=10)
 
 # Create a frame for DNA and Protein sequences
 sequence_frame = ttk.Frame(root)
-sequence_frame.grid(row=2, column=0, columnspan=4, padx=10, pady=10)
+sequence_frame.grid(row=2, column=0, columnspan=5, padx=10, pady=10)
 
 dna_label = ttk.Label(sequence_frame, text="DNA Sequence:")
 dna_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
@@ -219,28 +266,43 @@ protein_scrollbar = ttk.Scrollbar(sequence_frame, command=protein_text.yview)
 protein_scrollbar.grid(row=1, column=3, sticky='nsew')
 protein_text['yscrollcommand'] = protein_scrollbar.set
 
+translate_button = ttk.Button(sequence_frame,
+                              text="Translate to Protein",
+                              command=translate_to_protein)
+translate_button.grid(row=2, column=1, padx=10, pady=10)
+
+
 copy_dna_button = ttk.Button(sequence_frame,
                              text="Save and Copy DNA",
                              command=lambda: save_and_copy_sequence(
                                  "DNA", dna_text, "dna_sequence.txt"))
 copy_dna_button.grid(row=2, column=0, padx=10, pady=10)
 
+
+
 copy_protein_button = ttk.Button(
     sequence_frame,
     text="Save and Copy Protein",
     command=lambda: save_and_copy_sequence("Protein", protein_text,
                                            "protein_sequence.txt"))
-copy_protein_button.grid(row=2, column=2, padx=10, pady=10)
+copy_protein_button.grid(row=2, column=3, padx=10, pady=10)
 
 # Create a frame for protein entry and parameter generation
 protein_frame = ttk.Frame(root)
-protein_frame.grid(row=3, column=0, columnspan=4, padx=10, pady=10)
+protein_frame.grid(row=3,column=0, columnspan=5, padx=10, pady=10)
 
 protein_label = ttk.Label(protein_frame, text="Protein Sequence:")
 protein_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
 protein_entry = tk.Entry(protein_frame, width=40)
 protein_entry.grid(row=0, column=1, padx=10, pady=10)
+reset_sequence_button = ttk.Button(sequence_frame,
+                                    text="Reset Sequence",
+                                    command=reset_sequence)
+reset_sequence_button.grid(row=2, column=2, padx=10, pady=10)
+
+reset_protein_button = ttk.Button(root, text="Reset Parameters", command=reset_protein_and_parameters)
+reset_protein_button.grid(row=3, column=4, padx=10, pady=10)
 
 generate_button = ttk.Button(protein_frame,
                              text="Generate Parameters",
