@@ -211,7 +211,7 @@ def generate_parameters():
 
 # Create the main window
 root = tk.Tk()
-root.title("GenoVisor")
+root.title("BioTransPro")
 
 style = ttk.Style()
 style.configure("Colorful.TButton", foreground="white", background="#4CAF50", font=("Helvetica", 10, "bold"))
